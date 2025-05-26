@@ -1,0 +1,174 @@
+# window function
+
+WITH tb_daily AS (
+  SELECT DISTINCT idCliente,
+                  date(dtTransacao) AS dtVisita
+  FROM silver.upsell.transacoes
+  ORDER BY idCliente, dtVisita
+),
+
+tb_lag AS (
+    SELECT *
+          ,LAG(dtVisita) OVER (PARTITION BY idCliente ORDER BY dtVisita DESC) AS proxDia
+    FROM tb_daily
+    ORDER BY idCliente, dtVisita
+),
+
+tb_media As (
+    SELECT idCliente,
+          avg(date_diff(proxDia, dtVisita)) AS mediaRecorrencia,
+          median(date_diff(proxDia, dtVisita)) AS medianaRecorrencia,
+          COUNT(*) AS qtdeAparicoes
+    FROM tb_lag
+    GROUP BY ALL
+),
+
+tb_max_date AS (
+  SELECT idCliente, date_diff( (SELECT MAX(dtTransacao) FROM silver.upsell.transacoes) , max(dtTransacao)) AS dtLast
+  FROM silver.upsell.transacoes
+  GROUP BY ALL
+)
+
+SELECT *
+FROM tb_max_date AS t1
+LEFT JOIN tb_media AS t2
+ON t1.idCliente = t2.idCliente
+
+---------------
+
+-- Qual categoria é campeã de vendas em cada estado (UF do cliente)?
+
+WITH tb_uf_categoria AS (
+    SELECT t4.descUF,
+          t3.descCategoria,
+          count(t1.idPedido) AS qtdeItens,
+          count(distinct t1.idPedido) AS qtdePedidos
+
+    FROM silver.olist.pedido AS t1
+
+    LEFT JOIN silver.olist.item_pedido AS t2
+    ON t1.idPedido = t2.idPedido
+
+    LEFT JOIN silver.olist.produto AS t3
+    ON t2.idProduto = t3.idProduto
+
+    LEFT JOIN silver.olist.cliente As t4
+    ON t1.idCliente = t4.idCliente
+
+    GROUP BY ALL
+)
+
+-- tb_rank (
+--     SELECT *,
+--           row_number() OVER (PARTITION BY descUF ORDER BY qtdeItens DESC) AS rank
+--     FROM tb_uf_categoria
+--     ORDER BY descUF, qtdeItens DESC
+-- )
+
+SELECT *
+FROM tb_uf_categoria
+QUALIFY row_number() OVER (PARTITION BY descUF ORDER BY qtdeItens DESC) = 1
+
+---------------
+
+-- 7. PLUS: Selecione um dia de venda aleatório de cada vendedor
+WITH tb_vendedor_daily (
+
+  SELECT DISTINCT
+        t2.idVendedor,
+        date(t1.dtPedido) AS diaVenda
+  FROM silver.olist.pedido AS t1
+
+  LEFT JOIN silver.olist.item_pedido AS t2
+  ON t1.idPedido = t2.idPedido
+  
+)
+
+SELECT *
+FROM tb_vendedor_daily
+QUALIFY row_number() OVER (PARTITION BY idVendedor ORDER BY RAND()) = 1
+
+---------------
+
+WITH tb_daily AS (
+  SELECT date(dtTransacao) AS dia,
+        sum(nrPontosTransacao) AS qtdePontos,
+        count(distinct idTransacao) AS qtdeTransacao
+  FROM silver.upsell.transacoes
+  WHERE dtTransacao IS NOT NULL
+  GROUP BY ALL
+  ORDER BY dia
+)
+
+SELECT *,
+       SUM(qtdePontos) OVER (ORDER BY dia) AS qtdePontosAcum,
+       SUM(qtdeTransacao) OVER (ORDER BY dia) AS qtdeTransacaoAcum
+FROM tb_daily
+
+-------------
+
+-- REceita acumulada por categoria ao longo do periodo 
+
+with daily_cat_receita as
+(
+  select  
+    t2.descCategoria,
+    date(t3.dtPedido) as dia,
+    sum(t1.vlPreco) as receita
+
+  from silver.olist.item_pedido t1
+
+  left join silver.olist.produto t2
+  on t1.idProduto = t2.idProduto
+
+  left join silver.olist.pedido t3
+  on t1.idPedido = t3.idPedido
+
+  group by all
+),
+
+tb_top_categorias (
+  select descCategoria, sum(receita) As receita
+  from daily_cat_receita
+  group by all
+  order by receita desc
+  limit 10
+),
+
+tb_receita as (
+  select 
+    *,
+    sum(receita) over (partition by descCategoria order by dia) as acumuladaReceita
+  from daily_cat_receita
+  where descCategoria in (select descCategoria from tb_top_categorias)
+)
+
+select * from tb_receita
+
+-------------------
+
+WITH tb_daily AS (
+
+  SELECT idCliente,
+        date(dtTransacao) AS dia,
+        sum(nrPontosTransacao) AS nrPontos
+  FROM silver.upsell.transacoes
+  GROUP BY ALL
+
+),
+
+tb_acum As (
+  SELECT *,
+        SUM(nrPontos) OVER (PARTITION BY idCliente ORDER BY dia ASC) AS nrPontosAcum,
+        row_number() OVER (PARTITION BY idCliente ORDER BY dia ASC) AS diasVida
+  FROM tb_daily
+)
+
+SELECT diasVida,
+       avg(nrPontosAcum) as avgPontos,
+       median(nrPontosAcum) as medianpontos
+FROM tb_acum
+group by all
+
+--------------
+

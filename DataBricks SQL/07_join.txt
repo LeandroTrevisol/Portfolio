@@ -1,0 +1,82 @@
+# join
+
+SELECT idTransacaoProduto,
+       idCliente,
+       dtTransacao,
+       nrPontosTransacao,
+       descNomeProduto
+
+FROM silver.upsell.transacoes
+
+LEFT JOIN silver.upsell.transacao_produto
+ON silver.upsell.transacoes.idTransacao = silver.upsell.transacao_produto.idTransacao
+
+--------
+
+SELECT t1.*,
+       t2.descNomeProduto
+
+FROM silver.upsell.transacoes AS t1
+
+LEFT JOIN silver.upsell.transacao_produto AS t2
+ON t1.idTransacao = t2.idTransacao
+
+
+--------------
+
+-- QUANTIDADE DE TRANSACOES DO PRODUTO DE ChatMessage NO MÊS DE Junho/2024?
+
+SELECT count(distinct t1.idTransacao),
+       count(*),
+       count(distinct t2.idTransacao)
+
+FROM silver.upsell.transacoes AS t1
+
+LEFT JOIN silver.upsell.transacao_produto AS t2
+ON t1.idTransacao = t2.idTransacao
+
+WHERE year(t1.dtTransacao) = 2024
+AND month(t1.dtTransacao) = 06
+AND t2.descNomeProduto = 'ChatMessage'
+
+
+---------
+
+-- QUANTIDADE DE TRANSACOES POR PRODUTO NO MÊS DE Junho/2024? E TOTAL DE PONTOS?
+
+SELECT t2.descNomeProduto,
+       count(*) AS qtdeLinhas,
+       count(distinct t1.idTransacao) AS qtdeTransacoes,
+       sum(t1.nrPontosTransacao) AS ttPontos
+
+FROM silver.upsell.transacoes AS t1
+
+LEFT JOIN silver.upsell.transacao_produto AS t2
+ON t1.idTransacao = t2.idTransacao
+
+WHERE year(t1.dtTransacao) = 2024
+AND month(t1.dtTransacao) = 06
+
+GROUP BY ALL
+
+----------------
+
+-- QUANTIDADE DE TRANSACOES POR PRODUTO DIARIAMENTE EM 2024? E TOTAL DE PONTOS?
+
+SELECT date(t1.dtTransacao) AS dtDia,
+       t2.descNomeProduto,
+       count(distinct t1.idTransacao) AS qtdeTransacao,
+       sum(t1.nrPontosTransacao) AS ttPontos
+
+FROM silver.upsell.transacoes AS t1
+
+LEFT JOIN silver.upsell.transacao_produto AS t2
+ON t1.idTransacao = t2.idTransacao
+
+WHERE year(t1.dtTransacao) = 2024
+
+GROUP BY ALL
+ORDER BY dtDia
+
+-------------------
+

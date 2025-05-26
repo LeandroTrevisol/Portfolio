@@ -1,0 +1,37 @@
+# 04_case_when
+
+-- BAIXO: Até 1000
+-- MÉDIO: de 1000 Até 5.000
+-- ALTO: de 5000 Até 10.000
+-- MUITO ALTO: Maior que 10.000
+
+SELECT *,
+       CASE
+           WHEN COALESCE(nrPontosCliente, 0) < 1000 THEN 'BAIXO'
+           WHEN nrPontosCliente < 5000 THEN 'MÉDIO'
+           WHEN nrPontosCliente < 10000 THEN 'ALTO'
+           ELSE 'MUITO ALTO'
+       END
+
+FROM silver.upsell.cliente
+
+---------------------
+
+SELECT *,
+       CASE
+           WHEN COALESCE(nrPontosCliente, 0) < 1000 THEN 'BAIXO'
+           WHEN nrPontosCliente < 5000 THEN 'MÉDIO'
+           WHEN nrPontosCliente < 10000 THEN 'ALTO'
+           ELSE 'MUITO ALTO'
+       END AS descTierPontos
+
+FROM silver.upsell.cliente
+
+WHERE flEmailCliente = 1
+
+ORDER BY nrPontosCliente DESC
+
+LIMIT 100
+
+------------------------
+

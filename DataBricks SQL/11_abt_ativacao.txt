@@ -1,0 +1,55 @@
+# abt_ativacao
+
+DROP TABLE IF EXISTS sandbox.asn.abt_t5;
+CREATE TABLE IF NOT EXISTS sandbox.asn.abt_t5
+
+with tb_safra AS (
+    select dtRef,
+           idVendedor
+
+    from sandbox.asn.fs_seller_t5
+    where day(dtRef) = 1
+    and dtRef < '2018-01-01'
+),
+
+tb_evento AS (
+
+    SELECT DISTINCT t2.idVendedor, date(t1.dtPedido)
+    FROM silver.olist.pedido AS t1
+
+    LEFT JOIN silver.olist.item_pedido AS t2
+    ON t1.idPedido = t2.idPedido
+
+),
+
+tb_resposta AS (
+
+    SELECT t1.dtRef,
+          t1.idVendedor,
+          count(dtPedido) AS qtdeVenda,
+          CASE WHEN count(dtPedido) = 0 THEN 1 ELSE 0 END AS flagChurn
+
+    FROM tb_safra AS t1
+
+    LEFT JOIN tb_evento AS t2
+    ON t1.idVendedor = t2.idVendedor
+    AND t1.dtRef <= t2.dtPedido
+    AND t2.dtPedido <= t1.dtRef + INTERVAL 30 DAY
+
+    GROUP BY ALL
+),
+
+tb_abt AS ( 
+
+  SELECT *
+  FROM tb_resposta AS t1
+  LEFT JOIN sandbox.asn.fs_avaliacao_t5 USING (idVendedor, dtRef)
+  LEFT JOIN sandbox.asn.fs_cliente_t5 USING (idVendedor, dtRef)
+  LEFT JOIN sandbox.asn.fs_pagamento_t5 USING (idVendedor, dtRef)
+  LEFT JOIN sandbox.asn.fs_produto_t5 USING (idVendedor, dtRef)
+  LEFT JOIN sandbox.asn.fs_seller_t5 USING (idVendedor, dtRef)
+  LEFT JOIN sandbox.asn.fs_vendas_t5 USING (idVendedor, dtRef)
+  
+)
+
+SELECT * FROM tb_abt

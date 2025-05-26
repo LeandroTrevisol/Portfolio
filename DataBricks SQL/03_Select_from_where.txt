@@ -1,0 +1,76 @@
+# Select & From and Where
+
+SELECT *
+FROM silver.upsell.cliente
+WHERE nrPontosCliente = 0
+
+------------
+
+-- Exemplo de where
+SELECT *
+FROM silver.upsell.cliente
+WHERE flEmailCliente <> 0 -- filtro de email não registrado
+
+/* 
+sdnasindas
+sdasndasn
+dasdnasdnas
+dasdlasndlnas
+dasmdlmaslmdas
+*/
+
+-- WHERE nrPontosCliente = 0
+
+-----------------------
+
+SELECT *
+FROM silver.upsell.cliente
+WHERE flEmailCliente = 1
+
+-----------------
+
+SELECT *
+FROM silver.upsell.transacoes
+WHERE nrPontosTransacao = 50
+
+
+-----------------
+
+SELECT *
+FROM silver.upsell.cliente
+
+WHERE nrPontosCliente > 500
+AND flEmailCliente = 1
+
+--------------
+
+SELECT *,
+       lower(descProduto)
+
+from silver.upsell.produtos
+
+
+
+-- WHERE lower(descProduto) LIKE '%churn%'
+
+WHERE contains(lower(descProduto), 'churn')
+
+-- WHERE descProduto ILIKE '%churn%'
+-- WHERE descProduto ILIKE '%ch_rn%'
+-- WHERE descProduto IN ('Churn_10pp', 'Churn_2pp', 'Churn_5pp')
+-- WHERE descProduto = 'Churn_10pp'
+-- OR descProduto = 'Churn_2pp'
+-- OR descProduto = 'Churn_5pp'
+
+
+------------
+
+SELECT *
+FROM silver.upsell.transacoes
+-- WHERE dayofweek(dtTransacao) IN (1,7)
+WHERE weekday(dtTransacao) > 4
+
+
+--------
+
+
