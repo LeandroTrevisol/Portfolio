@@ -1,0 +1,11 @@
+# Ola
+
+SELECT 'OLA MUNDO' AS Col1
+
+-----------
+
+SELECT 1+1 AS soma_1_1
+
+-----------
+
+SELECT dayofweek('1992-06-18')

@@ -1,0 +1,71 @@
+# groupby
+
+-- Para o Q3 de 2024 - ok
+-- Para cada cliente queremos: qtde transacoes, pontos positivos, saldo: ok
+
+SELECT idCliente,
+        COUNT(distinct idTransacao) as qtdeTransacoes,
+        sum(nrPontosTransacao) AS saldoPontos,
+        sum(case when nrPontosTransacao > 0 then nrPontosTransacao else 0 end) AS saldoPositivo
+
+FROM silver.upsell.transacoes
+
+WHERE dtTransacao >= '2024-04-01'
+AND dtTransacao < '2024-07-01'
+
+GROUP BY ALL
+HAVING qtdeTransacoes > 100
+AND count(distinct date(dtTransacao)) > 10
+
+ORDER BY qtdeTransacoes DESC
+
+
+----------------
+
+-- QUAIS SÃO OS DIAS (ano-mes-dia) DE 2024 QUE TIVEMOS MAIS DE 1000 TRANSACOES?
+SELECT 
+       date(dtTransacao) AS dtFodase
+      --  COUNT(distinct idTransacao) AS qtdeTransacoes
+
+FROM silver.upsell.transacoes
+
+WHERE YEAR(dtTransacao) = 2024
+
+GROUP BY ALL
+HAVING COUNT(distinct idTransacao) > 1000
+
+-------------
+
+-- QUAIS SÃO OS MESES (ano-mes) DE 2024 QUE TIVEMOS MAIS DE 200000 PONTOS POSITIVOS?
+
+SELECT 
+      date_trunc("MONTH", dtTransacao) AS dtMes,
+      YEAR(dtTransacao) AS ano,
+      MONTH(dtTransacao) AS mes,
+      date_format(dtTransacao, 'yyyy-MM') AS dtAnoMes,
+      sum(CASE WHEN nrPontosTransacao > 0 THEN nrPontosTransacao ELSE 0 END) AS saldoPositivo
+
+FROM silver.upsell.transacoes
+
+WHERE year(dtTransacao) = 2024
+
+GROUP BY ALL
+HAVING saldoPositivo > 200000
+
+----------------
+
+-- Qual a série histórica de quantidade de pedidos por dia? E receita?
+
+SELECT date(t1.dtPedido) AS dataDiaPedido,
+       count(distinct t1.idPedido) AS qtdePedidos,
+       sum(coalesce(t2.vlPreco,0)) AS receitaProduto,
+       sum(coalesce(t2.vlFrete,0)) AS receitaFrete,
+       sum(coalesce(t2.vlFrete + t2.vlPreco,0)) AS receitaTotal
+
+FROM silver.olist.pedido AS t1
+
+LEFT JOIN silver.olist.item_pedido AS t2
+on t1.idPedido = t2.idPedido
+
+GROUP BY ALL
+ORDER BY dataDiaPedido

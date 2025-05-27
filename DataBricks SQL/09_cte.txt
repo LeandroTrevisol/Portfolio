@@ -1,0 +1,126 @@
+# cte
+
+-- quantos usuários estavam ativos em julho de 2024 e continuam ativos em agosto de 2024?
+
+SELECT count(DISTINCT idCliente)
+FROM silver.upsell.transacoes
+WHERE dtTransacao >= '2024-07-01' AND dtTransacao < '2024-08-01'
+AND idCliente IN (
+    SELECT DISTINCT idCliente
+    FROM silver.upsell.transacoes
+    WHERE dtTransacao >= '2024-08-01' AND dtTransacao < '2024-09-01'
+)
+
+
+-------------
+
+-- a % de usuários que estavam ativos em julho de 2024 e continuaram ativos em agosto de 2024?
+
+SELECT count(distinct t1.idCliente)  AS baseAtiva07,
+       count(distinct t2.idCliente) AS baseAtva07_08,
+       count(distinct t2.idCliente) / count(distinct t1.idCliente) as pctAtivo07_08,
+       count(distinct case when t2.idCliente is null then t1.idCliente end) / count(distinct t1.idCliente) as pctInativo07_08,
+       1 - count(distinct t2.idCliente) / count(distinct t1.idCliente) as pctChurn07_08
+
+FROM silver.upsell.transacoes AS t1
+
+LEFT JOIN (
+    SELECT *
+    FROM silver.upsell.transacoes
+    WHERE dtTransacao >= '2024-08-01' AND dtTransacao < '2024-09-01'
+) AS t2
+ON t1.idCliente = t2.idCliente
+
+WHERE t1.dtTransacao >= '2024-07-01' AND t1.dtTransacao < '2024-08-01'
+
+---------------
+
+-- a % de usuários que estavam ativos em julho de 2024 | e continuaram ativos em agosto de 2024?
+
+WITH transacoes AS (
+  SELECT idCliente, dtTransacao
+  FROM silver.upsell.transacoes
+  WHERE dtTransacao >= '2024-07-01' AND dtTransacao < '2024-09-01'
+),
+
+ativos_07 AS (
+  SELECT DISTINCT idCliente
+  FROM transacoes
+  WHERE dtTransacao >= '2024-07-01' AND dtTransacao < '2024-08-01'
+),
+
+ativos_08 AS (
+  SELECT DISTINCT idCliente
+  FROM transacoes
+  WHERE dtTransacao >= '2024-08-01' AND dtTransacao < '2024-09-01'
+),
+
+tb_final AS (
+
+  SELECT count(t1.idCliente) AS qtdeAtivo07,
+         count(t2.idCliente) AS qtdeAtivo07_08,
+         count(t2.idCliente) / count(t1.idCliente)  AS qtdeRetencao07_08,
+         1 - count(t2.idCliente) / count(t1.idCliente)  AS qtdeChurn07_08
+
+  FROM ativos_07 AS t1
+  LEFT JOIN ativos_08 AS t2
+  ON t1.idCliente = t2.idCliente
+
+)
+
+SELECT * FROM tb_final
+
+---------------------------
+
+-- Quantos meses de atividade, cada usuário ativo de 2024-03 tiveram?
+-- Considere transações depois de 2024-03.
+
+WITH base_ativa AS (
+  SELECT DISTINCT idCliente
+  FROM silver.upsell.transacoes
+  WHERE dtTransacao >= '2024-03-01' AND dtTransacao < '2024-04-01'
+),
+
+tb_ativacao_meses AS (
+  SELECT t1.idCliente,
+         count(DISTINCT date_trunc('month', dtTransacao)) AS qtdeMes
+  
+  FROM silver.upsell.transacoes as t1
+  
+  -- INNER JOIN base_ativa AS t2
+  -- ON t1.idCliente = t2.idCliente
+  
+  WHERE dtTransacao >= '2024-03-01'
+  GROUP BY ALL
+)
+
+SELECT *
+FROM base_ativa AS t1
+LEFT JOIN tb_ativacao_meses AS t2
+ON t1.idCliente = t2.idCliente
+ORDER BY t2.qtdeMes DESC
+
+-----------------
+
+-- Quantos meses de atividade, cada usuário que teve, considerando apenas usuários com primeira interação em 2024-04?
+-- Considere transações depois de 2024-04.
+
+WITH tb_base_cohoort AS (
+  SELECT idCliente
+  FROM silver.upsell.transacoes
+  GROUP BY ALL
+  HAVING date(date_trunc('month', min(dtTransacao))) = '2024-04-01'
+),
+
+tb_qtde_mes AS (
+  SELECT idCliente,
+        count(DISTINCT date_trunc('month', dtTransacao)) AS qtdeMes
+  FROM silver.upsell.transacoes
+  WHERE dtTransacao >= '2024-04-01'
+  GROUP BY ALL
+)
+
+SELECT *
+FROM tb_base_cohoort as t1
+LEFT JOIN tb_qtde_mes AS t2
+ON t1.idCliente = t2.idCliente

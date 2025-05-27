@@ -1,0 +1,14 @@
+# Select & From
+
+SELECT * FROM silver.upsell.cliente LIMIT 10
+
+------------
+
+SELECT
+        nrPontosCliente AS nrPontos,
+        idCliente AS clienteFodase
+
+FROM silver.upsell.cliente
+LIMIT 10
+
+-----------------------

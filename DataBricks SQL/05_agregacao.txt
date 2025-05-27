@@ -1,0 +1,95 @@
+#_agregacao
+
+SELECT count(*) AS total_rows,           -- linhas totais
+       count(distinct idCliente),        -- clientes distintos
+       count(distinct nrPontosCliente),  -- pontos distintos
+       count(distinct flEmailCliente),   -- marcacao de email distinta
+       count(flEmailCliente)             -- marcacao de email sem nulos
+
+FROM silver.upsell.cliente
+
+
+---------------
+
+SELECT count(*),
+       count(distinct idCliente),
+       count(*) / count(distinct idCliente)
+
+FROM silver.upsell.transacoes
+
+WHERE MONTH(dtTransacao) = 6
+
+---------------------
+
+SELECT idTransacao, idCliente
+FROM silver.upsell.transacoes
+where dtTransacao is null
+order by idCliente, idTransacao
+
+
+-----------------
+
+SELECT 
+       date(date_trunc('MONTH',dtTransacao)) AS mesTransacao,
+       count(*) AS qtdeLinhas,
+       count(distinct idCliente, idTransacao) AS qtdeClientes,
+       count(*) / count(distinct idCliente) AS qtdePedidoCliente
+
+FROM silver.upsell.transacoes
+
+WHERE dtTransacao is not null
+AND dtTransacao >= '2024-07-01'
+AND dtTransacao < '2024-10-01'
+
+GROUP BY date(date_trunc('MONTH',dtTransacao))
+
+ORDER BY date(date_trunc('MONTH',dtTransacao))
+
+
+----------------
+
+SELECT idCliente,                       -- 1
+       date(dtTransacao) AS dtCliente,  -- 2
+       count(*) AS qtdeLinha,
+       count(distinct idTransacao) AS qtdeTransacao,
+       avg(nrPontosTransacao) AS avgPontos
+
+FROM silver.upsell.transacoes
+
+GROUP BY ALL
+ORDER BY 1, 2
+
+---------------
+
+SELECT flEmailCliente,
+       count(*) AS qtdeCliente,
+       avg(nrPontosCliente) AS avgPontos,
+       stddev(nrPontosCliente) AS stdPontos,
+       avg(nrPontosCliente) - 1.96 * stddev(nrPontosCliente) / sqrt(count(*)) AS lowerBound,
+       avg(nrPontosCliente) + 1.96 * stddev(nrPontosCliente) / sqrt(count(*)) AS upperBound
+
+FROM silver.upsell.cliente
+GROUP BY flEmailCliente
+
+-----------------
+
+SELECT date(dtTransacao) AS dtDia,
+       count(*) AS qtdeTransacao,
+       sum(nrPontosTransacao) AS saldoPontos,
+       sum(CASE WHEN nrPontosTransacao > 0 THEN nrPontosTransacao ELSE 0 END) AS nrPontosTransacaoPos,
+       sum(CASE WHEN nrPontosTransacao < 0 THEN nrPontosTransacao ELSE 0 END) AS nrPontosTransacaoNeg
+
+FROM silver.upsell.transacoes
+
+WHERE dtTransacao IS NOT NULL
+
+GROUP BY dtDia
+ORDER BY dtDia
+
+---------------
+
+SELECT *,
+       CASE WHEN nrPontosTransacao > 0 THEN nrPontosTransacao ELSE 0 END AS nrPontosTransacaoPos,
+       CASE WHEN nrPontosTransacao < 0 THEN nrPontosTransacao ELSE 0 END AS nrPontosTransacaoNeg
+
+FROM silver.upsell.transacoes
